@@ -1,0 +1,5 @@
+.env
+.idea/*
+traefik/logs/*
+*.ipynb_checkpoints
+.ipynb_checkpoints/*
