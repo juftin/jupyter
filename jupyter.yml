@@ -60,15 +60,15 @@ services:
             - --providers.file.directory=/rules
             - --providers.file.watch=true
             # ENTRYPOINTS
-            - --entryPoints.http.address=:80
-            - --entryPoints.https.address=:443
+            - --entryPoints.web.address=:80
+            - --entryPoints.websecure.address=:443
             - --entryPoints.traefik.address=:8080
             # TESTING SETTINGS (COMMENTED OUT BY DEFAULT)
             - -api.insecure=true
         labels:
             traefik.enable:                               true
             traefik.http.routers.traefik-rtr.rule:        Host(`${TRAEFIK_SUBDOMAIN}.${DOMAIN_NAME}`)
-            traefik.http.routers.traefik-rtr.entrypoints: http
+            traefik.http.routers.traefik-rtr.entrypoints: web
             traefik.http.routers.traefik-rtr.service:     api@internal
 
     ####################################
@@ -84,8 +84,6 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock:ro
         networks:
             docker_socket_proxy: null
-        ports:
-            - "127.0.0.1:2375:2375"
         environment:
             - LOG_LEVEL=info # debug, info, notice, warning, err, crit, alert, emerg
             - EVENTS=1
@@ -125,18 +123,27 @@ services:
         networks:
             traefik: null
         restart:        ${UNIVERSAL_RESTART_POLICY}
+        user:
+                        root
+        working_dir:    /home/${ADMIN_USER}
         environment:
+            NB_USER:            ${ADMIN_USER}
+            NB_UID:             ${PUID}
+            NB_GID:             ${PGID}
             JUPYTER_ENABLE_LAB: "yes"
             RESTARTABLE:        "yes"
+            CHOWN_HOME:         "yes"
+            GRANT_SUDO:         "yes"
             JUPYTER_TOKEN:      ${ADMIN_PASSWORD}
         volumes:
-            - ${DOCKER_DIRECTORY}/jupyter/notebooks:/home/jovyan/work:rw
+            - ${DOCKER_DIRECTORY}/jupyter/notebooks:/home/${ADMIN_USER}/work:rw
+        command:        start.sh jupyter lab --LabApp.token=''
         depends_on:
             - traefik
         labels:
             traefik.enable:                                             true
             traefik.http.routers.jupyter-rtr.rule:                      Host(`${JUPYTER_SUBDOMAIN}.${DOMAIN_NAME}`)
-            traefik.http.routers.jupyter-rtr.entrypoints:               http
+            traefik.http.routers.jupyter-rtr.entrypoints:               web
             traefik.http.routers.jupyter-rtr.service:                   jupyter-svc
             traefik.http.services.jupyter-svc.loadbalancer.server.port: 8888
 
