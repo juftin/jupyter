@@ -123,8 +123,7 @@ services:
         networks:
             traefik: null
         restart:        ${UNIVERSAL_RESTART_POLICY}
-        user:
-                        root
+        user:           root
         working_dir:    /home/${ADMIN_USER}
         environment:
             NB_USER:            ${ADMIN_USER}
