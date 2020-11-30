@@ -1,0 +1,6 @@
+autopep8==1.5.*
+ipyleaflet==0.13.*
+ipywidgets==7.5.*
+jupyterlab-git==0.23.*
+nbdime==2.1.*
+xeus-python==0.8.*
