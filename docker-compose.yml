@@ -1,122 +1,27 @@
 version: '3.7'
 
-services:
+################################################################################
+# NETWORKING CONFIGURATION
+################################################################################
 
-    ########################################################
-    # ROUTING AND SERVING
-    ########################################################
-
-    ####################################
-    # TRAEFIK (REVERSE PROXY)
-    ####################################
+networks:
 
     traefik:
-        container_name: ${COMPOSE_PROJECT_NAME}-traefik
-        image:          library/traefik:v2.3
-        hostname:       ${TRAEFIK_SUBDOMAIN}
-        ports:
-            -   published: 80
-                target:    80
-                protocol:  tcp
-                mode:      host
-            -   published: 443
-                target:    443
-                protocol:  tcp
-                mode:      host
-        volumes:
-            - ${DOCKER_DIRECTORY}/traefik/config:/etc/traefik
-            - ${DOCKER_DIRECTORY}/traefik/rules:/rules
-            - ${DOCKER_DIRECTORY}/traefik/logs:/logs
-        networks:
-            traefik:             null
-            docker_socket_proxy: null
-        restart:        ${UNIVERSAL_RESTART_POLICY}
-        depends_on:
-            - socket-proxy
-        command:
-            # GLOBAL SETTINGS
-            - --global.checkNewVersion=true
-            - --global.sendAnonymousUsage=false
-            # API SETTINGS
-            - --api=true
-            - --api.dashboard=true
-            # LOGGING SETTINGS
-            - --log=true
-            - --log.level=INFO # DEBUG, INFO, WARN, ERROR, FATAL, PANIC
-            - --log.format=COMMON
-            - --accessLog=true
-            - --accessLog.filePath=/logs/access.log
-            - --accessLog.format=JSON
-            - --accessLog.bufferingSize=100
-            - --accessLog.filters.statusCodes=400-499
-            - --accessLog.filters.retryAttempts=true
-            - --accessLog.filters.minDuration=10ms
-            # PROVIDERS
-            - --providers.docker=true
-            - --providers.docker.endpoint=tcp://socket-proxy:2375
-            - --providers.docker.exposedByDefault=false
-            - --providers.docker.network=${COMPOSE_PROJECT_NAME}_traefik
-            - --providers.docker.swarmMode=false
-            - --providers.file.directory=/rules
-            - --providers.file.watch=true
-            # ENTRYPOINTS
-            - --entryPoints.web.address=:80
-            - --entryPoints.websecure.address=:443
-            - --entryPoints.traefik.address=:8080
-            # TESTING SETTINGS (COMMENTED OUT BY DEFAULT)
-            - -api.insecure=true
-        labels:
-            traefik.enable:                               true
-            traefik.http.routers.traefik-rtr.rule:        Host(`${TRAEFIK_SUBDOMAIN}.${DOMAIN_NAME}`)
-            traefik.http.routers.traefik-rtr.entrypoints: web
-            traefik.http.routers.traefik-rtr.service:     api@internal
+        external:
+            name: traefik_reverse-proxy
 
-    ####################################
-    # SOCKET-PROXY (DOCKER.SOCK)
-    ####################################
+################################################################################
+# SERVICES CONFIGURATION
+################################################################################
 
-    socket-proxy:
-        container_name: ${COMPOSE_PROJECT_NAME}-socket-proxy
-        image:          tecnativa/docker-socket-proxy:latest
-        restart:        ${UNIVERSAL_RESTART_POLICY}
-        privileged:     true
-        volumes:
-            - /var/run/docker.sock:/var/run/docker.sock:ro
-        networks:
-            docker_socket_proxy: null
-        environment:
-            - LOG_LEVEL=info # debug, info, notice, warning, err, crit, alert, emerg
-            - EVENTS=1
-            - PING=1
-            - VERSION=1
-            - AUTH=0
-            - SECRETS=0
-            - POST=1
-            - DELETE=1
-            - BUILD=0
-            - COMMIT=0
-            - CONFIGS=0
-            - CONTAINERS=1
-            - DISTRIBUTION=0
-            - EXEC=0
-            - IMAGES=1
-            - INFO=1
-            - NETWORKS=1
-            - NODES=0
-            - PLUGINS=0
-            - SERVICES=1
-            - SESSION=0
-            - SWARM=0
-            - SYSTEM=0
-            - TASKS=1
-            - VOLUMES=1
+services:
 
     ####################################
     # HOSTED JUPYTER NOTEBOOK
     ####################################
 
     jupyter:
-        container_name: ${COMPOSE_PROJECT_NAME}-jupyter
+        container_name: jupyter
         build:
             context:    ${DOCKER_DIRECTORY}/jupyter/
             dockerfile: Dockerfile
@@ -126,28 +31,23 @@ services:
         user:           root
         working_dir:    /home/${ADMIN_USER}
         environment:
-            NB_USER:            ${ADMIN_USER}
-            NB_UID:             ${PUID}
-            NB_GID:             ${PGID}
-            JUPYTER_ENABLE_LAB: "yes"
-            RESTARTABLE:        "yes"
-            CHOWN_HOME:         "yes"
-            GRANT_SUDO:         "yes"
-            JUPYTER_TOKEN:      ${ADMIN_PASSWORD}
+            NB_USER:               ${ADMIN_USER}
+            NB_UID:                ${PUID}
+            NB_GID:                ${PGID}
+            JUPYTER_ENABLE_LAB:    "yes"
+            RESTARTABLE:           "yes"
+            CHOWN_HOME:            "yes"
+            GRANT_SUDO:            "yes"
+            JUPYTER_TOKEN:         ${ADMIN_PASSWORD}
+            PYTHONPATH:            $${PYTHONPATH}:/home/${ADMIN_USER}/${SHARED_DIRECTORY_NAME}
         volumes:
-            - ${DOCKER_DIRECTORY}/jupyter/notebooks:/home/${ADMIN_USER}/work:rw
-        command:        start.sh jupyter lab --LabApp.token=''
-        depends_on:
-            - traefik
+            - ${SHARED_DIRECTORY}:/home/${ADMIN_USER}/${SHARED_DIRECTORY_NAME}:rw
+        command:        start.sh jupyter lab
         labels:
             traefik.enable:                                             true
             traefik.http.routers.jupyter-rtr.rule:                      Host(`${JUPYTER_SUBDOMAIN}.${DOMAIN_NAME}`)
-            traefik.http.routers.jupyter-rtr.entrypoints:               web
             traefik.http.routers.jupyter-rtr.service:                   jupyter-svc
             traefik.http.services.jupyter-svc.loadbalancer.server.port: 8888
-
-networks:
-    traefik:
-        driver: bridge
-    docker_socket_proxy:
-        driver: bridge
+            # SET ENTRYPOINTS TO "HTTP" AND COMMENT OUT MIDDLEWARE LINE WHEN RUNNING LOCALLY
+            traefik.http.routers.jupyter-rtr.entrypoints:               https
+            traefik.http.routers.jupyter-rtr.middlewares:               chain-oauth-google@file
