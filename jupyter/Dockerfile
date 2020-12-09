@@ -11,11 +11,21 @@ RUN \
     fix-permissions /home/$NB_USER && \
     rm /tmp/requirements.txt
 
+WORKDIR /tmp
+
 RUN \
+    jupyter contrib nbextension install --user && \
+    jupyter nbextensions_configurator enable --user &&\
+    jupyter nbextension enable varInspector/main && \
+    jupyter nbextension enable autoscroll/main && \
+    jupyter nbextension enable code_prettify/code_prettify && \
+    jupyter nbextension enable code_prettify/autopep8 && \
+    jupyter nbextension enable toc2/main && \
     jupyter labextension install @jupyterlab/git --no-build && \
     jupyter labextension install @jupyterlab/toc --no-build && \
     jupyter labextension install @jupyterlab/google-drive --no-build && \
-    # jupyter labextension install @jupyterlab/dataregistry-extension --no-build && \
+    jupyter labextension install @lckr/jupyterlab_variableinspector && \
+    # jupyter labextension install @jupyterlab/dataregistry-extension --no-build && \ # NOT YET SUPPORTED
     jupyter labextension install @jupyterlab/debugger --no-build && \
     jupyter labextension install @jupyter-widgets/jupyterlab-manager --no-build && \
     jupyter labextension install @jupyter-widgets/jupyterlab-manager jupyter-leaflet --no-build && \
@@ -26,3 +36,5 @@ RUN \
     rm -rf "/home/${NB_USER}/.node-gyp" && \
     fix-permissions "${CONDA_DIR}" && \
     fix-permissions "/home/${NB_USER}"
+
+WORKDIR /home/${NB_USER}
