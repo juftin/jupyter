@@ -48,6 +48,6 @@ services:
             traefik.http.routers.jupyter-rtr.rule:                      Host(`${JUPYTER_SUBDOMAIN}.${DOMAIN_NAME}`)
             traefik.http.routers.jupyter-rtr.service:                   jupyter-svc
             traefik.http.services.jupyter-svc.loadbalancer.server.port: 8888
-            # SET ENTRYPOINTS TO "HTTP" AND COMMENT OUT MIDDLEWARE LINE WHEN RUNNING LOCALLY
-            traefik.http.routers.jupyter-rtr.entrypoints:               https
-            traefik.http.routers.jupyter-rtr.middlewares:               chain-oauth-google@file
+            # SET ENTRYPOINTS TO "HTTP" AND MIDDLEWARES TO "chain-local-testing@file" WHEN RUNNING LOCALLY
+            traefik.http.routers.jupyter-rtr.entrypoints:               http
+            traefik.http.routers.jupyter-rtr.middlewares:               chain-local-testing@file
