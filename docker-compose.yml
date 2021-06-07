@@ -30,7 +30,7 @@ services:
         networks:
             traefik:             null
             docker_socket_proxy: null
-        restart:        unless-stopped
+        restart:        ${UNIVERSAL_RESTART_POLICY}
         depends_on:
             - socket-proxy
         command:
@@ -120,7 +120,7 @@ services:
         image:          juftin/jupyter:latest
         networks:
             traefik: null
-        restart:        unless-stopped
+        restart:        ${UNIVERSAL_RESTART_POLICY}
         user:           root
         environment:
             NB_USER:       ${ADMIN_USER}
